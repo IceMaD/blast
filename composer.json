@@ -1,0 +1,10 @@
+{
+  "require" : {
+    "symfony/console": "2.0.*",
+    "league/csv": "^8.0",
+    "symfony/symfony": "^3.2"
+  },
+  "autoload" : {
+    "psr-0": { "": "src/" }
+  }
+}
