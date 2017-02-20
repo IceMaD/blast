@@ -2,10 +2,10 @@
 <?php
 
 date_default_timezone_set('UTC');
-
 set_time_limit(0);
 
-(@include_once __DIR__ . '/../vendor/autoload.php') || @include_once __DIR__ . '/../../../autoload.php';
+(@include_once __DIR__ . '/../vendor/autoload.php');
+(@include_once __DIR__ . '/../vendor/symfony/symfony/src/Symfony/Component/VarDumper/Resources/functions/dump.php');
 
 use Symfony\Component\Console\Application;
 
@@ -14,4 +14,5 @@ $app = new Application('Blast Application', '0.0.1');
 $app->addCommands([
     new Command\BlastCommand(),
 ]);
+
 $app->run();

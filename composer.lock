@@ -4,8 +4,8 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#composer-lock-the-lock-file",
         "This file is @generated automatically"
     ],
-    "hash": "326d7f0f7c985098ee3bb5672b9c89d1",
-    "content-hash": "0d32207b9350879c8f3a8c4efb01aec7",
+    "hash": "02d3c156ecae11f2c80631814808d472",
+    "content-hash": "13aa3f690cda0bde2d6321d6aecd2702",
     "packages": [
         {
             "name": "doctrine/annotations",
@@ -603,48 +603,6 @@
                 "psr-3"
             ],
             "time": "2016-10-10 12:19:37"
-        },
-        {
-            "name": "symfony/console",
-            "version": "v2.0.25",
-            "target-dir": "Symfony/Component/Console",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/symfony/console.git",
-                "reference": "da9d86bbc5336cde92f00079c0fb2108ab7bf5e9"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/symfony/console/zipball/da9d86bbc5336cde92f00079c0fb2108ab7bf5e9",
-                "reference": "da9d86bbc5336cde92f00079c0fb2108ab7bf5e9",
-                "shasum": ""
-            },
-            "require": {
-                "php": ">=5.3.2"
-            },
-            "type": "library",
-            "autoload": {
-                "psr-0": {
-                    "Symfony\\Component\\Console": ""
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "Symfony Community",
-                    "homepage": "http://symfony.com/contributors"
-                },
-                {
-                    "name": "Fabien Potencier",
-                    "email": "fabien@symfony.com"
-                }
-            ],
-            "description": "Symfony Console Component",
-            "homepage": "http://symfony.com",
-            "time": "2013-02-27 09:08:35"
         },
         {
             "name": "symfony/polyfill-intl-icu",

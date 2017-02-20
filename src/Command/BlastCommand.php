@@ -3,6 +3,7 @@
 namespace Command;
 
 use League\Csv\Writer;
+use Model\Hit;
 use SimpleXMLElement;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Helper\Table;
@@ -21,12 +22,19 @@ class BlastCommand extends Command
             ->addArgument('firstBlast', InputArgument::REQUIRED, 'First blast to compare')
             ->addArgument('secondBlast', InputArgument::REQUIRED, 'Second blast to compare')
             ->addOption('output', 'o', InputOption::VALUE_OPTIONAL, 'Where to output the matches (csv)', false)
+            ->addOption('preview', 'p', InputOption::VALUE_OPTIONAL, 'Preview the result in the command line', false)
             ->addOption('identity', 'i', InputOption::VALUE_OPTIONAL, 'minimal % identity for match', 30)
             ->addOption('firstBlastName', 'f', InputOption::VALUE_OPTIONAL, 'Name of the first blast', 'First blast')
             ->addOption('secondBlastName', 's', InputOption::VALUE_OPTIONAL, 'Name of the second blast', 'Second blast')
         ;
     }
 
+    /**
+     * @param InputInterface  $input
+     * @param OutputInterface $output
+     *
+     * @return int|null|void
+     */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         $formatter = $this->getHelper('formatter');
@@ -40,41 +48,25 @@ class BlastCommand extends Command
         $firstBlast = $this->extract($input->getArgument('firstBlast'), $identity);
         $secondBlast = $this->extract($input->getArgument('secondBlast'), $identity);
 
-        $matches = $this->compare($firstBlast, $secondBlast);
+        $blasts = $this->compare($firstBlast, $secondBlast);
 
-        if (0 === count($matches)) {
-            $output->writeln($formatter->formatBlock('No match', 'error'));
+        if (0 === count($blasts)) {
+            $output->writeln($formatter->formatBlock('No common blast', 'error'));
 
             return;
         }
 
-        $headers = [
-            'Reference',
-            sprintf('%s identity', $input->getOption('firstBlastName')),
-            sprintf('%s accession', $input->getOption('firstBlastName')),
-            sprintf('%s identity', $input->getOption('secondBlastName')),
-            sprintf('%s accession', $input->getOption('secondBlastName')),
-        ];
+        $output->writeln($formatter->formatBlock(sprintf('%d matches', count($blasts)), 'info'));
 
-        $table = new Table($output);
-        $table->setHeaders($headers);
-
-        $table->setRows($matches);
-        $table->render();
-
-        if ($path = $input->getOption('output')) {
-            $csv = Writer::createFromPath($path, "w");
-            $csv->insertOne($headers);
-            $csv->insertAll(array_values($matches));
-            $output->writeln($formatter->formatBlock(sprintf('Output saved in %s', $path), 'info'));
-        }
+        $this->outputTable($input, $output, $blasts);
+        $this->outputFile($input, $output, $blasts);
     }
 
     /**
      * @param string $path
      * @param int    $identity
      *
-     * @return array
+     * @return Hit[]
      */
     private function extract($path, $identity)
     {
@@ -86,27 +78,33 @@ class BlastCommand extends Command
 
         foreach ($hits as $i => $hit) {
 
-            $hsp = $hit->Hit_hsps->Hsp;
+            $hit = new Hit($hit);
 
-            $hsp_identity = round((int) $hsp->{'Hsp_identity'} * 100 / (int) $hsp->{'Hsp_align-len'});
-
-            if ($hsp_identity < $identity) {
+            if ($hit->getIdentity() < $identity) {
                 continue;
             }
 
-            preg_match_all('/\[([^\]]+)\]/', $hit->Hit_def, $matches);
+            preg_match_all('/\[([^\]]+)\]/', $hit->getReference(), $matches);
 
             foreach ($matches[1] as $match) {
-                $extract[$match] = [
-                    'identity' => $hsp_identity,
-                    'accession' => $hit->Hit_accession,
-                ];
+
+                $hit->setProtein($match);
+
+                $extract[$match] = $hit;
             }
+
+            if ($i == 50) { return $extract; }
         }
 
         return $extract;
     }
 
+    /**
+     * @param Hit[] $firstBlast
+     * @param Hit[] $secondBlast
+     *
+     * @return array
+     */
     private function compare($firstBlast, $secondBlast)
     {
         $firstBlastRefs = array_keys($firstBlast);
@@ -119,10 +117,10 @@ class BlastCommand extends Command
         foreach ($commonRefs as $ref) {
             $result[] = [
                 'ref' => $ref,
-                'firstBlastIdentity' => $firstBlast[$ref]['identity'],
-                'firstBlastAccession' => $firstBlast[$ref]['accession'],
-                'secondBlastIdentity' => $secondBlast[$ref]['identity'],
-                'secondBlastAccession' => $secondBlast[$ref]['accession'],
+                'firstBlastIdentity' => $firstBlast[$ref]->getIdentity(),
+                'firstBlastAccession' => $firstBlast[$ref]->getAccession(),
+                'secondBlastIdentity' => $secondBlast[$ref]->getIdentity(),
+                'secondBlastAccession' => $secondBlast[$ref]->getAccession(),
             ];
         }
 
@@ -137,5 +135,52 @@ class BlastCommand extends Command
         });
 
         return $result;
+    }
+
+    /**
+     * @param InputInterface  $input
+     * @param OutputInterface $output
+     * @param array           $blasts
+     */
+    private function outputTable(InputInterface $input, OutputInterface $output, array $blasts)
+    {
+        if ($input->getOption('preview')) {
+            $table = new Table($output);
+            $table->setHeaders($this->getHeaders($input));
+
+            $table->setRows($blasts);
+            $table->render();
+        }
+    }
+
+    /**
+     * @param InputInterface  $input
+     * @param OutputInterface $output
+     * @param array           $blasts
+     */
+    private function outputFile(InputInterface $input, OutputInterface $output, array $blasts)
+    {
+        if ($path = $input->getOption('output')) {
+            $csv = Writer::createFromPath($path, "w");
+            $csv->insertOne($this->getHeaders($input));
+            $csv->insertAll(array_values($blasts));
+            $output->writeln($this->getHelper('formatter')->formatBlock(sprintf('Output saved in %s', $path), 'info'));
+        }
+    }
+
+    /**
+     * @param InputInterface $input
+     *
+     * @return array
+     */
+    private function getHeaders(InputInterface $input)
+    {
+        return [
+            'Reference',
+            sprintf('%s identity', $input->getOption('firstBlastName')),
+            sprintf('%s accession', $input->getOption('firstBlastName')),
+            sprintf('%s identity', $input->getOption('secondBlastName')),
+            sprintf('%s accession', $input->getOption('secondBlastName')),
+        ];
     }
 }
